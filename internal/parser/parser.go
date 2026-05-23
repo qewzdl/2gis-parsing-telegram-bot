@@ -35,11 +35,11 @@ type apiResponse struct {
 }
 
 type apiItem struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	AddressName     string       `json:"address_name"`
-	FullAddressName string       `json:"full_address_name"`
-	Contacts        []apiContact `json:"contact_groups"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	AddressName     string            `json:"address_name"`
+	FullAddressName string            `json:"full_address_name"`
+	Contacts        []apiContactGroup `json:"contact_groups"`
 	Point           struct {
 		Lat float64 `json:"lat"`
 		Lon float64 `json:"lon"`
@@ -50,11 +50,16 @@ type apiItem struct {
 	} `json:"rubrics"`
 }
 
+type apiContactGroup struct {
+	Contacts []apiContact `json:"contacts"`
+}
+
 type apiContact struct {
-	Contacts []struct {
-		Type  string `json:"type"`
-		Value string `json:"value"`
-	} `json:"contacts"`
+	Type      string `json:"type"`
+	Value     string `json:"value"`
+	Text      string `json:"text"`
+	PrintText string `json:"print_text"`
+	URL       string `json:"url"`
 }
 
 // Parser searches for companies through the 2GIS API.
@@ -164,6 +169,7 @@ func (p *Parser) fetchPage(query, regionSlug string, page int) ([]models.Company
 	}
 
 	companies := make([]models.Company, 0, len(apiResp.Result.Items))
+	missingContactGroups := 0
 	for _, item := range apiResp.Result.Items {
 		c := models.Company{
 			ID:      item.ID,
@@ -175,25 +181,36 @@ func (p *Parser) fetchPage(query, regionSlug string, page int) ([]models.Company
 		if len(item.Rubrics) > 0 {
 			c.Category = item.Rubrics[0].Name
 		}
-		// Phones and websites.
-		for _, group := range item.Contacts {
-			for _, contact := range group.Contacts {
-				switch contact.Type {
-				case "phone":
-					if c.Phone == "" {
-						c.Phone = contact.Value
-					}
-				case "website":
-					if c.Website == "" {
-						c.Website = contact.Value
-					}
-				}
-			}
+		if item.Contacts == nil {
+			missingContactGroups++
 		}
+		c.Phone, c.Website = extractContacts(item.Contacts)
 		companies = append(companies, c)
 	}
 
+	if len(apiResp.Result.Items) > 0 && missingContactGroups == len(apiResp.Result.Items) {
+		log.Print("[2GIS] items.contact_groups was not returned. Phone and website columns will stay empty unless the API key has contact details permission.")
+	}
+
 	return companies, apiResp.Result.Total, nil
+}
+
+func extractContacts(groups []apiContactGroup) (phone, website string) {
+	for _, group := range groups {
+		for _, contact := range group.Contacts {
+			switch contact.Type {
+			case "phone":
+				if phone == "" {
+					phone = firstNonEmpty(contact.Value, contact.Text, contact.PrintText)
+				}
+			case "website":
+				if website == "" {
+					website = firstNonEmpty(contact.URL, contact.Value, contact.Text, contact.PrintText)
+				}
+			}
+		}
+	}
+	return phone, website
 }
 
 func redactedURL(params url.Values) string {

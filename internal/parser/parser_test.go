@@ -28,3 +28,41 @@ func TestAPIResponseAcceptsStringAddressName(t *testing.T) {
 		t.Fatalf("AddressName = %q", got)
 	}
 }
+
+func TestExtractContactsReadsPhoneAndWebsite(t *testing.T) {
+	groups := []apiContactGroup{
+		{
+			Contacts: []apiContact{
+				{Type: "phone", Value: "+77172123456"},
+				{Type: "website", URL: "https://example.com"},
+			},
+		},
+	}
+
+	phone, website := extractContacts(groups)
+	if phone != "+77172123456" {
+		t.Fatalf("phone = %q", phone)
+	}
+	if website != "https://example.com" {
+		t.Fatalf("website = %q", website)
+	}
+}
+
+func TestExtractContactsUsesFallbackFields(t *testing.T) {
+	groups := []apiContactGroup{
+		{
+			Contacts: []apiContact{
+				{Type: "phone", Text: "+7 7172 12 34 56"},
+				{Type: "website", Value: "example.kz"},
+			},
+		},
+	}
+
+	phone, website := extractContacts(groups)
+	if phone != "+7 7172 12 34 56" {
+		t.Fatalf("phone = %q", phone)
+	}
+	if website != "example.kz" {
+		t.Fatalf("website = %q", website)
+	}
+}
