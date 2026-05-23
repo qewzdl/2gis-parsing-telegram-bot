@@ -1,0 +1,36 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+data/
+exports/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.xlsx
+
+# Go build/test artifacts
+bin/
+build/
+dist/
+*.exe
+*.test
+*.out
+coverage.out
+
+# Logs / temp
+*.log
+tmp/
+temp/
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Docker overrides
+docker-compose.override.yml

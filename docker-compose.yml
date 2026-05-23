@@ -1,0 +1,11 @@
+services:
+  bot:
+    build: .
+    container_name: 2gis-parser-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./exports:/app/exports
+    environment:
+      - TZ=Asia/Almaty
